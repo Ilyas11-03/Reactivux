@@ -1,124 +1,184 @@
-import React, { useState } from "react";
-import { loginSuperAdmin } from "./core/request"; // ton fichier API
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Mail, Lock, Eye, EyeOff, UtensilsCrossed } from "lucide-react"
+import { loginSuperAdmin } from "./core/request"
+import './Login.css'
 
 interface LoginProps {
-  onLoginSuccess: (token: string) => void;
+  onLoginSuccess?: () => void
 }
 
-const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function Login({ onLoginSuccess }: LoginProps) {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const validateForm = () => {
+    const newErrors: { email?: string; password?: string } = {}
+
+    if (!email) {
+      newErrors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email"
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required"
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
 
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    setSubmitError(null)
     try {
-      const result = await loginSuperAdmin(email, password);
-
-      if (result) {
-        alert("Connexion réussie ✅");
-        // Tu peux rediriger ici par exemple :
-        // window.location.href = "/dashboard";
+      const result = await loginSuperAdmin(email, password)
+      if (result && result.accessToken) {
+        // Token and uuid stored by loginSuperAdmin; trigger parent to show dashboard
+        onLoginSuccess?.()
+      } else {
+        setSubmitError("Invalid credentials. Please try again.")
       }
-    } catch (error) {
-      alert("Erreur de connexion ❌. Vérifie tes identifiants.");
-      console.error(error);
+    } catch (err) {
+      setSubmitError("Unable to sign in. Please try again.")
     } finally {
-      setLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 flex justify-center">
-      <div className="max-w-screen-xl m-0 sm:m-20 bg-white shadow sm:rounded-lg flex justify-center flex-1">
-        {/* Section gauche */}
-        <div className="lg:w-1/2 xl:w-5/12 p-6 sm:p-12">
-          <div className="flex justify-center">
-            <img
-              src="https://storage.googleapis.com/devitary-image-host.appspot.com/15846435184459982716-LogoMakr_7POjrN.png"
-              alt="Logo"
-              className="w-32"
-            />
-          </div>
-
-          {/* Formulaire */}
-          <div className="mt-12 flex flex-col items-center">
-            <h1 className="text-2xl xl:text-3xl font-extrabold text-center">
-              Connexion Restaurant
-            </h1>
-
-            <div className="w-full flex-1 mt-8">
-              {/* --- Formulaire Email / Password --- */}
-              <form
-                onSubmit={handleSubmit}
-                className="mx-auto max-w-xs flex flex-col items-center"
-              >
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-400 focus:bg-white"
-                />
-                <input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full mt-5 px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-400 focus:bg-white"
-                />
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`mt-5 tracking-wide font-semibold text-gray-100 w-full py-4 rounded-lg transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-indigo-500 hover:bg-indigo-700"
-                  }`}
-                >
-                  {loading ? (
-                    <span>Connexion...</span>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-6 h-6 -ml-2"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <path d="M20 8v6M23 11h-6" />
-                      </svg>
-                      <button className="ml-3 cursor-pointer" type="submit">Se connecter</button>
-                    </>
-                  )}
-                </button>
-              </form>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 ">
+      <div className="w-full max-w-md">
+        {/* Card Container */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-rose-600 to-orange-500 rounded-xl flex items-center justify-center">
+                <UtensilsCrossed className="w-6 h-6 text-white" />
+              </div>
             </div>
+            <h1 className="text-3xl font-bold text-slate-900">Restaurant Login</h1>
+            <p className="text-slate-600">Connectez-vous pour gérer vos commandes</p>
           </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {submitError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
+            {/* Email Field */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (errors.email) setErrors({ ...errors, email: undefined })
+                  }}
+                  placeholder="you@example.com"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-lg border-2 transition-colors focus:outline-none ${
+                    errors.email
+                      ? "border-red-500 bg-red-50 focus:border-red-600"
+                      : "border-slate-200 bg-slate-50 focus:border-slate-900 focus:bg-white"
+                  }`}
+                />
+              </div>
+              {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+               
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (errors.password) setErrors({ ...errors, password: undefined })
+                  }}
+                  placeholder="••••••••"
+                  className={`w-full pl-10 pr-12 py-2.5 rounded-lg border-2 transition-colors focus:outline-none ${
+                    errors.password
+                      ? "border-red-500 bg-red-50 focus:border-red-600"
+                      : "border-slate-200 bg-slate-50 focus:border-slate-900 focus:bg-white"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 disabled:from-slate-400 disabled:to-slate-300 text-white font-semibold py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+
+          
+
+       
         </div>
 
-        {/* Section droite */}
-        <div className="flex-1 bg-indigo-100 text-center hidden lg:flex">
-          <div
-            className="m-12 xl:m-16 w-full bg-contain bg-center bg-no-repeat"
-            style={{
-              backgroundImage:
-                "url('https://storage.googleapis.com/devitary-image-host.appspot.com/15848031292911696601-undraw_designer_life_w96d.svg')",
-            }}
-          ></div>
-        </div>
+        {/* Footer Text */}
+        <p className="text-center text-slate-500 text-xs mt-6">
+          Protected by reCAPTCHA and subject to the{" "}
+          <a href="#" className="hover:underline">
+            Privacy Policy
+          </a>{" "}
+          and{" "}
+          <a href="#" className="hover:underline">
+            Terms of Service
+          </a>
+        </p>
       </div>
     </div>
-  );
-};
-
-export default Login;
+  )
+}

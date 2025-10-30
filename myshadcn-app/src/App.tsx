@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react"
 import Login from "./Login/Login"
 import Header from "./Layout/Header"
-import Order from "./componants/Orders"
+import OrderDashboard from "./componants/OrderDashboard"
+// import AOS from "aos"
 
 const App: React.FC = () => {
+  // AOS.init()
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -16,22 +17,23 @@ const App: React.FC = () => {
     }
   }, [])
 
-  const handleLoginSuccess = (token: string) => {
-    localStorage.setItem("access_token", token)
+  // The Login page can notify us on success to reveal the dashboard immediately
+  const onLoginSuccess = () => {
     setIsAuthenticated(true)
-    
   }
 
-  // const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+  }
 
   return (
     <>
      {!isAuthenticated ? (
-       <Login onLoginSuccess={handleLoginSuccess} />
+       <Login onLoginSuccess={onLoginSuccess} />
      ) : (
       <>
-        <Header />
-        <Order/>
+        <Header onLogout={handleLogout} />
+        <OrderDashboard/>
       </>
      )}
 

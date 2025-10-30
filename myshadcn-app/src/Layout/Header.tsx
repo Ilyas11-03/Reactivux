@@ -1,8 +1,48 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { logout } from "../Login/core/request";
+import { User } from "lucide-react";
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onLogout: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onLogout }) => {
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [userName, setUserName] = useState<string>("Utilisateur");
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user_name");
+    if (stored && stored.trim().length > 0) {
+      setUserName(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!userModalOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserModalOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserModalOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [userModalOpen]);
+
+  const handleLogout = () => {
+    logout();
+    onLogout();
+  };
 
   return (
     <header className="bg-white shadow">
@@ -18,7 +58,7 @@ const Header: React.FC = () => {
               alt="logo"
               className="h-8 w-auto"
             />
-            <span className="font-semibold text-gray-900">Your Company</span>
+            <span className="font-semibold text-gray-900">Restauration</span>
           </a>
         </div>
 
@@ -49,77 +89,40 @@ const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* DESKTOP NAV */}
-        <div className="hidden lg:flex lg:gap-x-12">
-          {/* PRODUCT DROPDOWN */}
-          <div className="relative">
+       
+        {/* DESKTOP USER BUTTON */}
+        <div className="hidden lg:flex lg:flex-1 lg:justify-end">
+          <div className="relative" ref={userMenuRef}>
             <button
-              onClick={() => setProductOpen(!productOpen)}
-              className="flex items-center gap-x-1 text-sm font-semibold text-gray-900"
+              onClick={() => setUserModalOpen((o) => !o)}
+              aria-label="Compte utilisateur"
+              title="Compte utilisateur"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-gray-200 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-600/60"
             >
-              Product
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className={`w-5 h-5 text-gray-400 transition-transform ${
-                  productOpen ? "rotate-180" : ""
-                }`}
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 
-                  11.94l3.72-3.72a.75.75 0 1 1 1.06 
-                  1.06l-4.25 4.25a.75.75 0 0 
-                  1-1.06 0L5.22 9.28a.75.75 
-                  0 0 1 0-1.06Z"
-                />
-              </svg>
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white">
+                {userName.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase() || <User className="w-4 h-4" />}
+              </span>
+              <span className="max-w-[10rem] truncate">{userName}</span>
             </button>
 
-            {/* PRODUCT MENU */}
-            {productOpen && (
-              <div className="absolute left-0 mt-3 w-64 rounded-xl bg-white shadow-lg ring-1 ring-gray-900/10">
-                <div className="p-4 space-y-3">
-                  {[
-                    { name: "Analytics", desc: "Understand your traffic" },
-                    { name: "Engagement", desc: "Talk to your customers" },
-                    { name: "Security", desc: "Keep data safe" },
-                    { name: "Integrations", desc: "Connect with tools" },
-                    { name: "Automations", desc: "Create funnels" },
-                  ].map((item) => (
-                    <a
-                      key={item.name}
-                      href="#"
-                      className="block rounded-lg p-3 hover:bg-gray-50"
-                    >
-                      <p className="font-semibold text-gray-900">
-                        {item.name}
-                      </p>
-                      <p className="text-sm text-gray-600">{item.desc}</p>
-                    </a>
-                  ))}
+            {userModalOpen && (
+              <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-gray-200">
+                <div className="p-4 border-b border-gray-100">
+                  <p className="text-xs text-gray-500">Connecté en tant que</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-gray-900">{userName}</p>
+                </div>
+                <div className="p-2">
+                  <button
+                    onClick={() => { setUserModalOpen(false); handleLogout(); }}
+                    className="w-full inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Déconnexion
+                  </button>
                 </div>
               </div>
             )}
           </div>
-
-          <a href="#" className="text-sm font-semibold text-gray-900">
-            Features
-          </a>
-          <a href="#" className="text-sm font-semibold text-gray-900">
-            Marketplace
-          </a>
-          <a href="#" className="text-sm font-semibold text-gray-900">
-            Company
-          </a>
-        </div>
-
-        {/* DESKTOP LOGIN */}
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-          <a href="#" className="text-sm font-semibold text-gray-900">
-            Log in →
-          </a>
         </div>
       </nav>
 
@@ -166,22 +169,17 @@ const Header: React.FC = () => {
                 )}
               </div>
             )}
-
-            <a href="#" className="block text-gray-900 font-semibold">
-              Features
-            </a>
-            <a href="#" className="block text-gray-900 font-semibold">
-              Marketplace
-            </a>
-            <a href="#" className="block text-gray-900 font-semibold">
-              Company
-            </a>
-            <a href="#" className="block text-gray-900 font-semibold">
-              Log in →
-            </a>
+            <button 
+              onClick={handleLogout}
+              className="block text-red-600 font-semibold hover:text-red-700 transition-colors text-left w-full cursor-pointer"
+            >
+              Log out →
+            </button>
           </div>
         </div>
       )}
+
+      {/* USER DROPDOWN rendered inline above; no full-screen modal */}
     </header>
   );
 };

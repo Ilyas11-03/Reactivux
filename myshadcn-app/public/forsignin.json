@@ -1,0 +1,19 @@
+{
+  "message": "User signin successfully",
+  "data": {
+    "id": 1,
+    "first_name": "LIVCOLLECT",
+    "last_name": "ADMIN",
+    "email": "superadmin@livcollect.com",
+    "phone": "776-338-8639 x1826",
+    "roles": "[\"super-admin\"]",
+    "created_at": "2022-05-24T01:11:12.000000Z",
+    "updated_at": "2022-05-24T01:11:12.000000Z",
+    "city_id": null,
+    "store_id": 1,
+    "store_name": null,
+    "store_type": null,
+    "uuid": "78.......5"
+  },
+  "accessToken": "random"
+}
