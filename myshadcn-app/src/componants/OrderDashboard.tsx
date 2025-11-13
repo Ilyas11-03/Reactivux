@@ -28,23 +28,23 @@ export default function OrderDashboard() {
   const [dateFrom] = useState("")
   const [dateTo] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isTouch, setIsTouch] = useState(false)
 
   useEffect(() => {
     let mounted = true
-    const mediaQuery = window.matchMedia("(max-width: 768px)")
-    const updateIsMobile = (target: MediaQueryList | MediaQueryListEvent) => {
+    const mediaQuery = window.matchMedia("(max-width: 1024px)")
+    const updateIsTouch = (target: MediaQueryList | MediaQueryListEvent) => {
       if (!mounted) return
       if ("matches" in target) {
-        setIsMobile(target.matches)
+        setIsTouch(target.matches)
       }
     }
 
-    updateIsMobile(mediaQuery)
+    updateIsTouch(mediaQuery)
     if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", updateIsMobile)
+      mediaQuery.addEventListener("change", updateIsTouch)
     } else {
-      mediaQuery.addListener(updateIsMobile)
+      mediaQuery.addListener(updateIsTouch)
     }
 
     const load = async () => {
@@ -64,9 +64,9 @@ export default function OrderDashboard() {
     return () => {
       mounted = false
       if (typeof mediaQuery.removeEventListener === "function") {
-        mediaQuery.removeEventListener("change", updateIsMobile)
+        mediaQuery.removeEventListener("change", updateIsTouch)
       } else {
-        mediaQuery.removeListener(updateIsMobile)
+        mediaQuery.removeListener(updateIsTouch)
       }
     }
   }, [page])
@@ -587,7 +587,7 @@ export default function OrderDashboard() {
                             <Eye className="h-4 w-4" />
                             <span className="sr-only">Voir la facture</span>
                           </button>
-                          {!isMobile && (
+                          {!isTouch && (
                             <button
                               aria-label="Imprimer"
                               title="Imprimer"

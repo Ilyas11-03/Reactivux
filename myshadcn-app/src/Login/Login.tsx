@@ -61,10 +61,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 ">
+    <div className="login-background">
       <div className="w-full max-w-md">
         {/* Card Container */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-8">
+        <div className="login-card rounded-2xl p-8 space-y-8">
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="flex justify-center mb-4">

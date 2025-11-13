@@ -9,15 +9,15 @@ interface DetailsCommandsProps {
 }
 
 export default function DetailsCommands({ order, onClose }: DetailsCommandsProps) {
-  const [isMobile, setIsMobile] = useState(false)
+  const [isTouch, setIsTouch] = useState(false)
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 768px)")
+    const mediaQuery = window.matchMedia("(max-width: 1024px)")
     const handleChange = (event: MediaQueryListEvent) => {
-      setIsMobile(event.matches)
+      setIsTouch(event.matches)
     }
 
-    setIsMobile(mediaQuery.matches)
+    setIsTouch(mediaQuery.matches)
 
     if (typeof mediaQuery.addEventListener === "function") {
       mediaQuery.addEventListener("change", handleChange)
@@ -264,7 +264,7 @@ export default function DetailsCommands({ order, onClose }: DetailsCommandsProps
           >
             Fermer
           </button>
-          {!isMobile && (
+          {!isTouch && (
             <button
               onClick={() => window.print()}
               className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600/60 dark:bg-indigo-500 dark:hover:bg-indigo-600"
