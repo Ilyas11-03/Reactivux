@@ -1,0 +1,7 @@
+{{apiUrl}}orders/{{uuid}}/status
+method post
+body request : 
+{
+    "order_id": 1175,
+    "status": "canceled" // accepted, delivered, pending
+}

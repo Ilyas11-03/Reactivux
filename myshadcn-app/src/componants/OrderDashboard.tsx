@@ -3,39 +3,58 @@
 import { useEffect, useMemo, useState } from "react"
 import { getHistoricOrders, getUnstructuredOrders } from "./core/request"
 import type { Order } from "./core/model"
-import { Printer, Eye, X, Check } from "lucide-react"
+import { Printer, Eye, Clock, ChefHat, Truck, CheckCircle2, XCircle, Loader2, History } from "lucide-react"
 import DetailsCommands from "./DetailsCommands"
+import OrderStatusActions from "./OrderStatusActions"
 
  
 
 export default function OrderDashboard() {
   
-  const [statusFilter, setStatusFilter] = useState<"pending" | "preparing" | "delivered" | "all">("pending")
+  const [statusFilter, setStatusFilter] = useState<"pending" | "accepted" | "delivered" | "all">("pending")
   const [filterType, setFilterType] = useState("Tous")
   const [orderBy, setOrderBy] = useState("Tous")
   const [commandType, setCommandType] = useState("Tous")
   // Impression UI removed for now; keep state when we implement printing
   // const [impression, setImpression] = useState("Normale")
-  const [orders, setOrders] = useState<Order[]>([])
+  // Keep historic and pending datasets separate to avoid overwriting
+  const [historicOrders, setHistoricOrders] = useState<Order[]>([])
+  const [unstructuredOrders, setUnstructuredOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const [historicTotal, setHistoricTotal] = useState(0)
   const [search, setSearch] = useState("")
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
+  const [dateFrom] = useState("")
+  const [dateTo] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     let mounted = true
+    const mediaQuery = window.matchMedia("(max-width: 768px)")
+    const updateIsMobile = (target: MediaQueryList | MediaQueryListEvent) => {
+      if (!mounted) return
+      if ("matches" in target) {
+        setIsMobile(target.matches)
+      }
+    }
+
+    updateIsMobile(mediaQuery)
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", updateIsMobile)
+    } else {
+      mediaQuery.addListener(updateIsMobile)
+    }
+
     const load = async () => {
       setLoading(true)
       setError(null)
       const res = await getHistoricOrders(page)
       if (!mounted) return
       if (res && res.data) {
-        setOrders(res.data.data || [])
-        setTotal(res.data.total || 0)
+        setHistoricOrders(res.data.data || [])
+        setHistoricTotal(res.data.total || 0)
       } else {
         setError("Impossible de charger les commandes.")
       }
@@ -44,12 +63,25 @@ export default function OrderDashboard() {
     load()
     return () => {
       mounted = false
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", updateIsMobile)
+      } else {
+        mediaQuery.removeListener(updateIsMobile)
+      }
     }
   }, [page])
 
+  // Choose which dataset to display based on selected status
+  const currentOrders = useMemo(
+    () => (
+      (statusFilter === "pending" || statusFilter === "accepted" || statusFilter === "delivered")
+      ? unstructuredOrders : historicOrders),
+    [statusFilter, unstructuredOrders, historicOrders]
+  )
+
   const filteredOrders = useMemo(
     () =>
-      orders.filter(order => {
+      currentOrders.filter(order => {
         const normalizedQuery = search.trim().toLowerCase()
         const matchesQuery =
           normalizedQuery.length === 0 ||
@@ -66,31 +98,50 @@ export default function OrderDashboard() {
 
         const matchesOrderBy = orderBy === "Tous" || order.order_by === orderBy
         const matchesCommandType = commandType === "Tous" || order.type === commandType
-        const matchesStatus = statusFilter === "all" || order.status === statusFilter
+        // For unstructured new orders, status may be missing; show them when viewing pending
+        const matchesStatus =
+          statusFilter === "all" || (order.status ? order.status === statusFilter : statusFilter === "pending")
 
         return matchesQuery && fromOk && toOk && matchesPlanifier && matchesOrderBy && matchesCommandType && matchesStatus
       }),
-    [orders, search, dateFrom, dateTo, filterType, orderBy, commandType, statusFilter]
+    [currentOrders, search, dateFrom, dateTo, filterType, orderBy, commandType, statusFilter]
   )
 
   const formatAmount = (amount: number) => `${amount.toFixed(2)} €`
-  const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
+  const formatDate = (iso: string) => {
+    const d = new Date(iso)
+    return `${d.toLocaleDateString()} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  }
 
   const getStatusBadgeClasses = (status: Order["status"]) => {
     switch (status) {
       case "pending":
-        return "bg-amber-100 text-amber-800 ring-amber-200"
-      case "preparing":
-        return "bg-blue-100 text-blue-800 ring-blue-200"
-      case "delivered":
-        return "bg-emerald-100 text-emerald-800 ring-emerald-200"
+        return "bg-amber-50 text-amber-700 ring-amber-200"
       case "accepted":
-        return "bg-indigo-100 text-indigo-800 ring-indigo-200"
+        return "bg-sky-50 text-sky-700 ring-sky-200"
+      case "delivered":
+        return "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      // case "accepted":
+      //   return "bg-indigo-100 text-indigo-800 ring-indigo-200"
       case "cancelled":
-        return "bg-red-100 text-red-800 ring-red-200"
+        return "bg-rose-50 text-rose-700 ring-rose-200"
       default:
-        return "bg-gray-100 text-gray-800 ring-gray-200"
+        return "bg-gray-50 text-gray-700 ring-gray-200"
     }
+  }
+
+  const renderStatusBadge = (status: Order["status"]) => {
+    const Icon =
+      status === "pending" ? Clock :
+      status === "accepted" ? Loader2 :
+      status === "delivered" ? CheckCircle2 :
+      status === "cancelled" ? XCircle : Clock
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${getStatusBadgeClasses(status)}`}>
+        <Icon className={`h-3.5 w-3.5 ${status === "accepted" ? "animate-spin-slow" : ""}`} />
+        {status}
+      </span>
+    )
   }
 
   const handlePrint = async (order: Order) => {
@@ -243,42 +294,40 @@ export default function OrderDashboard() {
   }
 
   // Derived counters from fetched data
-  const { pendingCount, preparingCount, deliveredCount } = useMemo(() => {
+  const { pendingCount, acceptedCount, deliveredCount } = useMemo(() => {
     return {
-      pendingCount: orders.filter((o) => o.status === "pending").length,
-      preparingCount: orders.filter((o) => o.status === "preparing").length,
-      deliveredCount: orders.filter((o) => o.status === "delivered").length,
+      pendingCount: unstructuredOrders.filter((o) => o.status === "pending").length,
+      acceptedCount: unstructuredOrders.filter((o) => o.status === "accepted").length,
+      deliveredCount: unstructuredOrders.filter((o) => o.status === "delivered").length,
     }
-  }, [orders])
+  }, [historicOrders, unstructuredOrders])
 
   // Filter options aligned with backend values
   const orderByOptions: { value: string; label: string }[] = [
     { value: "Tous", label: "Tous" },
     { value: "website", label: "Site web" },
-    { value: "home", label: "Hôme" },
+    { value: "borne", label: "Borne" },
+    { value: "manager", label: "Manager" },
   ]
 
   const commandTypeOptions: { value: string; label: string }[] = [
     { value: "Tous", label: "Tous" },
-    { value: "cac", label: "C.A.C" },
+    { value: "cac", label: "À emporter" },
     { value: "liv", label: "Livraison" },
-    { value: "at_place", label: "Sur place" },
-    { value: "emporter", label: "À emporter" },
+    { value: "at_place", label: "Sur place" } 
   ]
 
   // Fetch typed orders for 'Nouvelles Commande'
   const handlePendingClick = async () => {
-    if (statusFilter === "pending") return;
+    if (statusFilter === "pending" && unstructuredOrders.length > 0) return;
     setStatusFilter("pending")
     setLoading(true)
     setError(null)
     try {
       const list = await getUnstructuredOrders()
-      setOrders(list)
-      setTotal(list.length)
+      setUnstructuredOrders(Array.isArray(list) ? list : [])
     } catch (e) {
-      setOrders([])
-      setTotal(0)
+      setUnstructuredOrders([])
       setError("Erreur réseau lors du chargement des commandes non structurées.")
     }
     setLoading(false)
@@ -293,39 +342,49 @@ export default function OrderDashboard() {
             onClick={handlePendingClick}
             className={`relative overflow-hidden rounded-xl shadow-lg cursor-pointer transition-all duration-300 ${
               statusFilter === "pending"
-                ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white"
-                : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50"
+                ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white"
+                : "bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100"
             }`}
           >
             <div className="p-6">
-              <div
-                className={`text-xs uppercase tracking-wider/5 font-medium/none ${
-                  statusFilter === "pending" ? "opacity-90" : "text-gray-700 font-semibold"
-                }`}
-              >
-                Nouvelles commandes
+              <div className="flex items-center justify-between">
+                <div
+                  className={`text-xs uppercase tracking-wider/5 font-semibold ${
+                    statusFilter === "pending" ? "opacity-90" : ""
+                  }`}
+                >
+                  Nouvelles commandes
+                </div>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusFilter === "pending" ? "bg-white/15" : "bg-amber-100"}`}>
+                  <Clock className={`${statusFilter === "pending" ? "text-white" : "text-amber-700"} h-4 w-4`} />
+                </div>
               </div>
               <div className="mt-2 text-3xl font-bold">{pendingCount}</div>
             </div>
           </div>
 
           <div
-            onClick={() => setStatusFilter("preparing")}
+            onClick={() => setStatusFilter("accepted")}
             className={`rounded-xl shadow-sm cursor-pointer transition-all duration-300 ${
-              statusFilter === "preparing"
-                ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white"
-                : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50"
+              statusFilter === "accepted"
+                ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white"
+                : "bg-sky-50 border border-sky-200 text-sky-900 hover:bg-sky-100"
             }`}
           >
             <div className="p-6">
-              <div
-                className={`text-xs uppercase tracking-wider/5 font-semibold ${
-                  statusFilter === "preparing" ? "text-white opacity-90" : "text-gray-700"
-                }`}
-              >
-                En préparations
+              <div className="flex items-center justify-between">
+                <div
+                  className={`text-xs uppercase tracking-wider/5 font-semibold ${
+                    statusFilter === "accepted" ? "text-white opacity-90" : ""
+                  }`}
+                >
+                  En préparations
+                </div>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusFilter === "accepted" ? "bg-white/15" : "bg-sky-100"}`}>
+                  <ChefHat className={`${statusFilter === "accepted" ? "text-white" : "text-sky-700"} h-4 w-4`} />
+                </div>
               </div>
-              <div className="mt-2 text-3xl font-bold">{preparingCount}</div>
+              <div className="mt-2 text-3xl font-bold">{acceptedCount}</div>
             </div>
           </div>
 
@@ -333,17 +392,22 @@ export default function OrderDashboard() {
             onClick={() => setStatusFilter("delivered")}
             className={`rounded-xl shadow-sm cursor-pointer transition-all duration-300 ${
               statusFilter === "delivered"
-                ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white"
-                : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50"
+                ? "bg-gradient-to-br from-emerald-500 to-green-600 text-white"
+                : "bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100"
             }`}
           >
             <div className="p-6">
-              <div
-                className={`text-xs uppercase tracking-wider/5 font-semibold ${
-                  statusFilter === "delivered" ? "text-white opacity-90" : "text-gray-700"
-                }`}
-              >
-                Livrées
+              <div className="flex items-center justify-between">
+                <div
+                  className={`text-xs uppercase tracking-wider/5 font-semibold ${
+                    statusFilter === "delivered" ? "text-white opacity-90" : ""
+                  }`}
+                >
+                  Livrées
+                </div>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusFilter === "delivered" ? "bg-white/15" : "bg-emerald-100"}`}>
+                  <Truck className={`${statusFilter === "delivered" ? "text-white" : "text-emerald-700"} h-4 w-4`} />
+                </div>
               </div>
               <div className="mt-2 text-3xl font-bold">{deliveredCount}</div>
             </div>
@@ -353,19 +417,24 @@ export default function OrderDashboard() {
             onClick={() => setStatusFilter("all")}
             className={`rounded-xl shadow-sm cursor-pointer transition-all duration-300 ${
               statusFilter === "all"
-                ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white"
-                : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50"
+                ? "bg-gradient-to-br from-slate-600 to-indigo-700 text-white"
+                : "bg-slate-50 border border-slate-200 text-slate-900 hover:bg-slate-100"
             }`}
           >
             <div className="p-6">
-              <div
-                className={`text-xs uppercase tracking-wider/5 font-semibold ${
-                  statusFilter === "all" ? "text-white opacity-90" : "text-gray-700"
-                }`}
-              >
-                Historiques
+              <div className="flex items-center justify-between">
+                <div
+                  className={`text-xs uppercase tracking-wider/5 font-semibold ${
+                    statusFilter === "all" ? "text-white opacity-90" : ""
+                  }`}
+                >
+                  Historiques
+                </div>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusFilter === "all" ? "bg-white/15" : "bg-slate-100"}`}>
+                  <History className={`${statusFilter === "all" ? "text-white" : "text-slate-700"} h-4 w-4`} />
+                </div>
               </div>
-              <div className="mt-2 text-3xl font-bold">{total}</div>
+              <div className="mt-2 text-3xl font-bold">{historicTotal}</div>
             </div>
           </div>
         </div>
@@ -431,10 +500,7 @@ export default function OrderDashboard() {
                     {option.label}
                   </button>
                 ))}
-              </div>
-              <button className="mt-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-600/60">
-                Manager
-              </button>
+              </div> 
             </div>
 
             <div>
@@ -458,19 +524,19 @@ export default function OrderDashboard() {
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden">
+          <div className="overflow-hidden rounded-b-xl">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="bg-purple-600/95 text-white sticky top-0 z-10 shadow">
-                    <th className="sticky left-0 z-20 bg-purple-600/95 px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Commande</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Date</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide">Montant</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Canal</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Planifiée</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Statut</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide">Actions</th>
+                  <tr className="bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/80 sticky top-0 z-10 shadow-sm">
+                    <th className="sticky left-0 z-20 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/80 px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Commande</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Date</th>
+                    <th className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-700">Montant</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Canal</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Type</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Planifiée</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Statut</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -486,66 +552,71 @@ export default function OrderDashboard() {
                   )}
                   {!loading && !error && filteredOrders.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-6 py-6 text-center text-sm text-gray-500">Aucune commande trouvée</td>
+                      <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">Aucune commande trouvée</td>
                     </tr>
                   )}
                   {!loading && !error && filteredOrders.map((order) => (
-                    <tr key={order.id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-100 transition">
-                      <td className="sticky left-0 z-10 bg-white/80 backdrop-blur px-6 py-4 text-sm font-medium text-gray-900">#{order.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{formatDate(order.created_at)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right font-mono">{formatAmount(order.total_amount)}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 ring-1 ring-inset ring-green-200">
+                    <tr key={order.id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-100/70 transition-colors">
+                      <td className="sticky left-0 z-10 bg-white/80 backdrop-blur px-5 py-3 text-sm font-semibold text-gray-900">
+                        #{order.id}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-700">{formatDate(order.created_at)}</td>
+                      <td className="px-5 py-3 text-sm text-gray-900 text-right font-mono">{formatAmount(order.total_amount)}</td>
+                      <td className="px-5 py-3 text-sm">
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
                           {order.order_by}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-1 text-xs font-semibold text-pink-800 ring-1 ring-inset ring-pink-200">
+                      <td className="px-5 py-3 text-sm">
+                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
                           {order.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{order.planified === 1 ? "Oui" : "Non"}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${getStatusBadgeClasses(order.status)}`}>
-                          {order.status}
-                        </span>
+                      <td className="px-5 py-3 text-sm text-gray-700">{order.planified === 1 ? "Oui" : "Non"}</td>
+                      <td className="px-5 py-3 text-sm">
+                        {renderStatusBadge(order.status)}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            aria-label="Imprimer"
-                            title="Imprimer"
-                            onClick={() => handlePrint(order)}
-                            className="inline-flex items-center justify-center rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-600/60 cursor-pointer"
-                          >
-                            <Printer className="h-4 w-4" />
-                            <span className="sr-only">Imprimer</span>
-                          </button>
+                      <td className="px-5 py-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             aria-label="Détails"
-                            title="Détails"
+                            title="Voir la facture"
                             onClick={() => setSelectedOrder(order)}
-                            className="inline-flex items-center justify-center rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-900 shadow-sm transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-600/60 cursor-pointer"
+                            className="inline-flex items-center justify-center rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-900 shadow-sm transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-600/60 cursor-pointer"
                           >
                             <Eye className="h-4 w-4" />
-                            <span className="sr-only">Détails</span>
+                            <span className="sr-only">Voir la facture</span>
                           </button>
-                          <button
-                            aria-label="Annuler"
-                            title="Annuler"
-                            className="inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600/60"
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Annuler</span>
-                          </button>
-                          <button
-                            aria-label="Accepter"
-                            title="Accepter"
-                            className="inline-flex items-center justify-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600/60"
-                          >
-                            <Check className="h-4 w-4" />
-                            <span className="sr-only">Accepter</span>
-                          </button>
+                          {!isMobile && (
+                            <button
+                              aria-label="Imprimer"
+                              title="Imprimer"
+                              onClick={() => handlePrint(order)}
+                              className="inline-flex items-center justify-center rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-600/60 cursor-pointer"
+                            >
+                              <Printer className="h-4 w-4" />
+                              <span className="sr-only">Imprimer</span>
+                            </button>
+                          )}
+                          {statusFilter !== "all" && (
+                            <>
+                          <OrderStatusActions
+                            orderId={order.id}
+                            onAccepted={() => {
+                              // Update in place and switch to "accepted" tab
+                              setUnstructuredOrders((prev) =>
+                                prev.map((o) => (o.id === order.id ? { ...o, status: "accepted" } as Order : o))
+                              )
+                              setStatusFilter("accepted")
+                            }}
+                            onCanceled={() => {
+                              // Remove from active list and switch to "all" (historic)
+                              setUnstructuredOrders((prev) => prev.filter((o) => o.id !== order.id))
+                              setStatusFilter("all")
+                            }}
+                          />
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -563,7 +634,7 @@ export default function OrderDashboard() {
           <div className="flex flex-col gap-4 border-t border-gray-200 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-gray-700">
               <span className="font-medium">Total des commandes :</span>
-              <span className="ml-2 font-semibold text-gray-900">{total}</span>
+              <span className="ml-2 font-semibold text-gray-900">{filteredOrders.length}</span>
             </div>
             <div className="flex items-center gap-2">
               <button

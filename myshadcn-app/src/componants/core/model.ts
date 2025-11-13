@@ -1,7 +1,7 @@
 export interface Order {
     id: number;
     type: string;
-    status: 'pending' | 'preparing' | 'delivered' | 'cancelled' | 'accepted';
+    status: 'pending' | 'accepted' | 'delivered' | 'cancelled' | 'accepted';
     is_paid: number;
     total_amount: number;
     comment: string | null;
@@ -171,7 +171,7 @@ export interface Order {
     data: {
       pending?: ActiveOrdersByType;
       accepted?: ActiveOrdersByType;
-      preparing?: ActiveOrdersByType;
+      accepted?: ActiveOrdersByType;
       delivered?: ActiveOrdersByType;
       cancelled?: ActiveOrdersByType;
     };

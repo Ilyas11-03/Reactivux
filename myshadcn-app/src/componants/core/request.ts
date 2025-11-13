@@ -61,3 +61,26 @@ export const getUnstructuredOrders = async (): Promise<Order[]> => {
     }
 }
 
+// Update order status (accept / cancel / deliver / pending)
+export const updateOrderStatus = async (orderId: number, status: "accepted" | "delivered" | "pending" | "canceled"): Promise<boolean> => {
+    try {
+        const token = getAccessToken();
+        const uuid = getUuid();
+        if (!token || !uuid) {
+            console.warn("Token ou UUID manquant. Assurez-vous d'être connecté.");
+            return false;
+        }
+        const url = `${api_url}/orders/${uuid}/status`;
+        await axios.post(url, { order_id: orderId, status }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+            },
+        });
+        return true;
+    } catch (error) {
+        console.error(`Erreur lors de la mise à jour du statut (${status}) pour la commande ${orderId} :`, error);
+        return false;
+    }
+}
+
