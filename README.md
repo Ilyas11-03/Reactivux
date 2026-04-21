@@ -125,16 +125,6 @@ npm install
 npm run dev
 ```
 
-### Environment Variables
-
-Create a `.env.local` file in `myshadcn-app/` and set your API base URL:
-
-```env
-NEXT_PUBLIC_API_URL=https://your-backend-api.com/api
-```
-
----
-
 ## 📄 Notes
 
 - The `.txt` files at the root are **API response samples and endpoint references** used during development — they are not production files.
