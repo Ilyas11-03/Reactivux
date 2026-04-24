@@ -4,7 +4,7 @@ A **TypeScript-based food ordering dashboard** (admin/store panel) built with **
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Reactivux/
@@ -18,7 +18,7 @@ Reactivux/
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
 | Layer      | Technology                          |
 |------------|-------------------------------------|
@@ -29,7 +29,7 @@ Reactivux/
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
 The app authenticates against the backend API and receives a JWT `accessToken` along with user profile data.
 
@@ -52,7 +52,7 @@ The app authenticates against the backend API and receives a JWT `accessToken` a
 
 ---
 
-## 📦 Orders API
+## Orders API
 
 ### List Orders
 
@@ -94,7 +94,7 @@ Returns a paginated list of orders. Each order contains:
 
 ---
 
-## 🗺️ Order Types
+## Order Types
 
 | Type       | Description                              |
 |------------|------------------------------------------|
@@ -104,7 +104,7 @@ Returns a paginated list of orders. Each order contains:
 
 ---
 
-## 🛠️ Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -125,7 +125,7 @@ npm install
 npm run dev
 ```
 
-## 📄 Notes
+## Notes
 
 - The `.txt` files at the root are **API response samples and endpoint references** used during development — they are not production files.
 - The `unstructed.txt` file is currently empty (likely a placeholder for future documentation).
@@ -133,6 +133,6 @@ npm run dev
 
 ---
 
-## 👤 Author
+## Author
 
 **Ilyas11-03** — [GitHub Profile](https://github.com/Ilyas11-03)
