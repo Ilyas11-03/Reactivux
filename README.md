@@ -1,4 +1,4 @@
-# Reactivux
+# ReactiveOrders 
 
 A **TypeScript-based food ordering dashboard** (admin/store panel) built with **React.ts** and **tailwindcss/ui**. The project integrates with a REST API backend — likely **LivCollect** — that manages stores, orders, customers, and delivery.
 
